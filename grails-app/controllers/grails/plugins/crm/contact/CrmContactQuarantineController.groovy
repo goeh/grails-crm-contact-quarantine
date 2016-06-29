@@ -18,6 +18,8 @@ package grails.plugins.crm.contact
 
 import grails.converters.JSON
 import grails.plugins.crm.core.TenantUtils
+import grails.plugins.crm.task.CrmTaskAttender
+import grails.plugins.crm.task.CrmTaskAttenderStatus
 
 /**
  * Created by goran on 2016-06-23.
@@ -99,7 +101,12 @@ class CrmContactQuarantineController {
             render m as JSON
         } else {
             def contact = crmContactQuarantineService.get(id)
-            render template: 'createBooking', model: [bean: contact]
+            def crmTaskAttender = new CrmTaskAttender()
+            def statusList = crmTaskService.listAttenderStatus()
+            def bookingList = []
+            render template: 'createBooking',
+                    model: [bean: contact, crmTaskAttender: crmTaskAttender,
+                            statusList: statusList, bookingList: bookingList]
         }
     }
 

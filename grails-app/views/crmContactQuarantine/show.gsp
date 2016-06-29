@@ -64,6 +64,22 @@
                 var $modal = $('#modal-container');
                 $modal.load("${createLink(action: 'createBooking', id: contact.id)}", function() {
                     $modal.modal('show');
+                    $('form', $modal).submit(function(ev) {
+                        ev.preventDefault();
+                        var $form = $(this);
+                        $.ajax({
+                            type: $form.attr('method'),
+                            url: $form.attr('action'),
+                            data: $form.serialize(),
+                            success: function (data) {
+                                $modal.modal('hide');
+                                //crmContactQuarantine.loadContacts();
+                            },
+                            error: function(data) {
+                                alert("Error " + data);
+                            }
+                        });
+                    });
                 });
             });
             $('button[name="_action_task"]').click(function (ev) {
