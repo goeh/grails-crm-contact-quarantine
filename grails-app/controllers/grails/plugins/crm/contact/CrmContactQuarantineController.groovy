@@ -31,6 +31,8 @@ class CrmContactQuarantineController {
     def crmContactService
     def crmBookingService
     def crmTaskService
+    def crmTrainingService
+    def selectionService
 
     def index() {
         def result = crmContactQuarantineService.list()
@@ -59,19 +61,29 @@ class CrmContactQuarantineController {
         redirect action: 'index'
     }
 
-    def contacts(String id) {
+    def contacts(String id, String q) {
         def contact = crmContactQuarantineService.get(id)
         def timeout = (grailsApplication.config.crm.quarantine.timeout ?: 60) * 1000
-        def result = event(for: 'quarantine', topic: 'duplicates',
-                data: [tenant: TenantUtils.tenant, person: contact]).waitFor(timeout)?.value
+        def result
+        if(q) {
+            result = crmContactService.list([name: q], [max: 100])*.dao
+        } else {
+            result = event(for: 'quarantine', topic: 'duplicates',
+                    data: [tenant: TenantUtils.tenant, person: contact]).waitFor(timeout)?.value
+        }
         render template: 'contacts', model: [list: result]
     }
 
-    def companies(String id) {
+    def companies(String id, String q) {
         def contact = crmContactQuarantineService.get(id)
         def timeout = (grailsApplication.config.crm.quarantine.timeout ?: 60) * 1000
-        def result = event(for: 'quarantine', topic: 'duplicates',
-                data: [tenant: TenantUtils.tenant, company: contact]).waitFor(timeout)?.value
+        def result
+        if(q) {
+            result = crmContactService.list([name: q], [max: 100])*.dao
+        } else {
+            result = event(for: 'quarantine', topic: 'duplicates',
+                    data: [tenant: TenantUtils.tenant, company: contact]).waitFor(timeout)?.value
+        }
         render template: 'companies', model: [list: result]
     }
 
@@ -103,10 +115,12 @@ class CrmContactQuarantineController {
             def contact = crmContactQuarantineService.get(id)
             def crmTaskAttender = new CrmTaskAttender()
             def statusList = crmTaskService.listAttenderStatus()
-            def bookingList = []
+            def events = crmTrainingService.listTrainingEvents([fromDate: new Date() - 7], [max: 10, sort: 'startTime', order: 'asc'])
+            def bookingList = events.bookings.flatten()
             render template: 'createBooking',
-                    model: [bean: contact, crmTaskAttender: crmTaskAttender,
-                            statusList: statusList, bookingList: bookingList]
+                    model: [bean        : contact, crmTaskAttender: crmTaskAttender,
+                            statusList  : statusList, bookingList: bookingList,
+                            trainingList: events]
         }
     }
 

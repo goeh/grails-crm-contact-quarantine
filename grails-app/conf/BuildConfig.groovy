@@ -46,6 +46,7 @@ grails.project.dependency.resolution = {
         compile ":crm-tags:2.4.1"
         compile ":crm-contact:2.4.2-SNAPSHOT"
         compile ":crm-task:2.4.4-SNAPSHOT"
+        compile ":crm-training:2.4.1-SNAPSHOT"
     }
 }
 

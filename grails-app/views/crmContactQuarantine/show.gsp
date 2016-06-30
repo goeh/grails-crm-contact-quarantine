@@ -4,12 +4,21 @@
     <meta name="layout" content="main"/>
     <title>Contact Quarantine</title>
     <r:script>
+        var searchDelay = (function(){
+          var timer = 0;
+          return function(callback, ms){
+            clearTimeout (timer);
+            timer = setTimeout(callback, ms);
+          };
+        })();
         var crmContactQuarantine = {
-            loadCompanies: function() {
-                $('#company-container').load("${createLink(action: 'companies', id: contact.id)}");
+            loadCompanies: function(q) {
+                if(!q) q = '';
+                $('#company-container tbody').load("${createLink(action: 'companies', id: contact.id)}?q=" + q);
             },
-            loadContacts: function() {
-                $('#person-container').load("${createLink(action: 'contacts', id: contact.id)}");
+            loadContacts: function(q) {
+                if(!q) q = '';
+                $('#person-container tbody').load("${createLink(action: 'contacts', id: contact.id)}?q=" + q);
             }
         };
         $(document).ready(function () {
@@ -27,7 +36,7 @@
                             data: $form.serialize(),
                             success: function (data) {
                                 $modal.modal('hide');
-                                crmContactQuarantine.loadCompanies();
+                                crmContactQuarantine.loadCompanies(null);
                             },
                             error: function(data) {
                                 alert("Error " + data);
@@ -50,7 +59,7 @@
                             data: $form.serialize(),
                             success: function (data) {
                                 $modal.modal('hide');
-                                crmContactQuarantine.loadContacts();
+                                crmContactQuarantine.loadContacts(null);
                             },
                             error: function(data) {
                                 alert("Error " + data);
@@ -73,7 +82,7 @@
                             data: $form.serialize(),
                             success: function (data) {
                                 $modal.modal('hide');
-                                //crmContactQuarantine.loadContacts();
+                                //crmContactQuarantine.loadContacts(null);
                             },
                             error: function(data) {
                                 alert("Error " + data);
@@ -90,11 +99,50 @@
                 });
             });
 
-            crmContactQuarantine.loadContacts();
-            crmContactQuarantine.loadCompanies();
+            $('.crm-search').click(function(ev) {
+                var $self = $(this);
+                var $table = $self.closest('table');
+                var $toggle = $table.find('.crm-toggle');
+                $toggle.children().toggle();
+                var $input = $toggle.find('input');
+                if($input.is(':visible')) {
+                    $input.focus();
+                }
+            });
+
+            $('.crm-toggle input').keydown(function(event){
+                if(event.keyCode == 13) {
+                    event.preventDefault();
+                    return false;
+                }
+            });
+
+            $('#company-container .crm-toggle input').keyup(function() {
+                var q = $(this).val();
+                searchDelay(function(){
+                    crmContactQuarantine.loadCompanies(q);
+                }, 750 );
+            });
+
+            $('#person-container .crm-toggle input').keyup(function() {
+                var q = $(this).val();
+                searchDelay(function(){
+                    crmContactQuarantine.loadContacts(q);
+                }, 750 );
+            });
+
+            crmContactQuarantine.loadContacts(null);
+            crmContactQuarantine.loadCompanies(null);
         });
     </r:script>
     <style type="text/css">
+    .crm-search {
+        cursor: pointer;
+    }
+    .crm-toggle input {
+        margin-bottom: 0;
+        padding: 1px 4px;
+    }
     </style>
 </head>
 
@@ -170,6 +218,10 @@
                     </div>
                 </div>
 
+                <div class="muted" style="font-size: 11px;">
+                    Skapad den <g:formatDate format="d MMMM yyyy 'kl.' HH:mm" date="${contact.timestamp ? new Date(contact.timestamp) : null}"/>
+                </div>
+
             </div>
         </div>
 
@@ -178,11 +230,55 @@
 
                 <h4>Matchande personer</h4>
 
-                <div id="person-container"><g:img dir="images" file="spinner.gif" alt="Loading..."/></div>
+                <div id="person-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th class="crm-search"><i class="icon-search"></i></th>
+                                <th class="crm-toggle">
+                                    <span>Namn</span>
+                                    <input type="text" name="q" maxlength="80" style="display: none;"/>
+                                </th>
+                                <th>E-post</th>
+                                <th>Telefon</th>
+                                <th>Adress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <g:img dir="images" file="spinner.gif" alt="Loading..."/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <h4>Matchande företag</h4>
 
-                <div id="company-container"><g:img dir="images" file="spinner.gif" alt="Loading..."/></div>
+                <div id="company-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th class="crm-search"><i class="icon-search"></i></th>
+                                <th class="crm-toggle">
+                                    <span>Företagsnamn</span>
+                                    <input type="text" name="q" maxlength="80" style="display: none;"/>
+                                </th>
+                                <th>E-post</th>
+                                <th>Telefon</th>
+                                <th>Adress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5">
+                                    <g:img dir="images" file="spinner.gif" alt="Loading..."/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
             </div>
         </div>

@@ -1,22 +1,9 @@
-<table class="table">
-    <thead>
+<g:each in="${list}" var="c">
     <tr>
-        <th></th>
-        <th>Namn</th>
-        <th>E-post</th>
-        <th>Telefon</th>
-        <th>Adress</th>
+        <td><input type="radio" name="person" value="${c.id}"/></td>
+        <td><g:link mapping="crm-contact-show" id="${c.id}">${c.fullName}</g:link></td>
+        <td>${c.email}</td>
+        <td>${c.telephone}</td>
+        <td>${c.fullAddress}</td>
     </tr>
-    </thead>
-    <tbody>
-    <g:each in="${list}" var="c">
-        <tr>
-            <td><input type="radio" name="person" value="${c.id}"/></td>
-            <td>${c.fullName}</td>
-            <td>${c.email}</td>
-            <td>${c.telephone}</td>
-            <td>${c.fullAddress}</td>
-        </tr>
-    </g:each>
-    </tbody>
-</table>
+</g:each>
