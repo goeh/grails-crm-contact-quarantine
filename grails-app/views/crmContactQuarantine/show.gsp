@@ -148,6 +148,13 @@
 
 <body>
 
+<header class="page-header clearfix">
+    <h1>
+        ${contact.target ?: 'Kontakt via webben'}
+        <small><g:formatDate format="'den' d MMMM yyyy 'kl.' HH:mm" date="${contact.timestamp ? new Date(contact.timestamp) : null}"/></small>
+    </h1>
+</header>
+
 <g:form>
     <div class="row-fluid">
         <div class="span5">
@@ -216,10 +223,6 @@
                     <div class="controls">
                         <g:textArea name="comments" value="${contact.comments}" rows="3" class="span11"/>
                     </div>
-                </div>
-
-                <div class="muted" style="font-size: 11px;">
-                    Skapad den <g:formatDate format="d MMMM yyyy 'kl.' HH:mm" date="${contact.timestamp ? new Date(contact.timestamp) : null}"/>
                 </div>
 
             </div>

@@ -65,7 +65,7 @@ class CrmContactQuarantineController {
         def contact = crmContactQuarantineService.get(id)
         def timeout = (grailsApplication.config.crm.quarantine.timeout ?: 60) * 1000
         def result
-        if(q) {
+        if (q) {
             result = crmContactService.list([name: q], [max: 100])*.dao
         } else {
             result = event(for: 'quarantine', topic: 'duplicates',
@@ -78,7 +78,7 @@ class CrmContactQuarantineController {
         def contact = crmContactQuarantineService.get(id)
         def timeout = (grailsApplication.config.crm.quarantine.timeout ?: 60) * 1000
         def result
-        if(q) {
+        if (q) {
             result = crmContactService.list([name: q], [max: 100])*.dao
         } else {
             result = event(for: 'quarantine', topic: 'duplicates',
@@ -129,8 +129,20 @@ class CrmContactQuarantineController {
             def m = crmTaskService.createTask(params, true)
             render m as JSON
         } else {
+            if(! params.name) {
+                params.name = 'Ny aktivitet'
+            }
             def contact = crmContactQuarantineService.get(id)
-            render template: 'createTask', model: [bean: contact]
+            def crmTask = crmTaskService.createTask(params, false)
+            def typeList = crmTaskService.listTaskTypes()
+            def timeList = (7..19).inject([]) { list, h ->
+                2.times {
+                    list << String.format("%02d:%02d", h, it * 30)
+                }; list
+            }
+            timeList = [''] + timeList.sort()
+            render template: 'createTask', model: [bean    : contact, crmTask: crmTask,
+                                                   typeList: typeList, timeList: timeList]
         }
     }
 }
