@@ -48,7 +48,8 @@
             $('button[name="_action_person"]').click(function (ev) {
                 ev.preventDefault();
                 var $modal = $('#modal-container');
-                $modal.load("${createLink(action: 'createPerson', id: contact.id)}", function() {
+                var selectedCompany = $('input[name="company"]:checked').val();
+                $modal.load("${createLink(action: 'createPerson', id: contact.id)}?company=" + selectedCompany, function() {
                     $modal.modal('show');
                     $('form', $modal).submit(function(ev) {
                         ev.preventDefault();
@@ -71,7 +72,11 @@
             $('button[name="_action_booking"]').click(function (ev) {
                 ev.preventDefault();
                 var $modal = $('#modal-container');
-                $modal.load("${createLink(action: 'createBooking', id: contact.id)}", function() {
+                var selectedContact = $('input[name="person"]:checked').val();
+                if(! selectedContact) {
+                    return;
+                }
+                $modal.load("${createLink(action: 'createBooking', id: contact.id)}?person=" + selectedContact, function() {
                     $modal.modal('show');
                     $('form', $modal).submit(function(ev) {
                         ev.preventDefault();
@@ -150,9 +155,12 @@
 
 <header class="page-header clearfix">
     <h1>
-        ${contact.target ?: 'Kontakt via webben'}
+        Kontakt via webben
         <small><g:formatDate format="'den' d MMMM yyyy 'kl.' HH:mm" date="${contact.timestamp ? new Date(contact.timestamp) : null}"/></small>
     </h1>
+    <g:if test="${target}">
+        <h2>${target}</h2>
+    </g:if>
 </header>
 
 <g:form>

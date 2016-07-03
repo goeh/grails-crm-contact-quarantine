@@ -30,7 +30,6 @@ import org.grails.databinding.SimpleMapDataBindingSource
 class CrmContactQuarantineService {
 
     private static final String USER_AGENT = 'GR8CRM'
-    private static final String SERVICE_URL = 'http://localhost:30316/quarantine'
 
     def grailsApplication
     def grailsWebDataBinder
@@ -49,7 +48,15 @@ class CrmContactQuarantineService {
         quarantine(data)
     }
 
+    private String getRemoteUri() {
+        grailsApplication.config.crm.contact.quarantine.url
+    }
+
     CrmContactQuarantine quarantine(Map data) {
+        if (getRemoteUri()) {
+            println data
+            return update(data)
+        }
         def tenant = data.tenant ?: TenantUtils.tenant
         def contact = new CrmContactQuarantine(tenantId: tenant)
         grailsWebDataBinder.bind(contact, data as SimpleMapDataBindingSource, null, CrmContactQuarantine.BIND_WHITELIST_QUARANTINE, null, null)
@@ -70,71 +77,102 @@ class CrmContactQuarantineService {
     }
 
     Collection list() {
-        def app = grailsApplication.metadata['app.name']
         def tenant = TenantUtils.tenant
-        def currentUser = crmSecurityService.currentUser
-        fetch("${SERVICE_URL}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+        if (getRemoteUri()) {
+            def app = grailsApplication.metadata['app.name']
+            def currentUser = crmSecurityService.currentUser
+            return fetch("${getRemoteUri()}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+        }
+        CrmContactQuarantine.createCriteria().list() {
+            eq('tenantId', tenant)
+        }
     }
 
     def get(String id) {
-        def app = grailsApplication.metadata['app.name']
-        def tenant = TenantUtils.tenant
-        def currentUser = crmSecurityService.currentUser
-        fetch("${SERVICE_URL}/${id}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+        if (getRemoteUri()) {
+            def app = grailsApplication.metadata['app.name']
+            def tenant = TenantUtils.tenant
+            def currentUser = crmSecurityService.currentUser
+            return fetch("${getRemoteUri()}/${id}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+        }
+        CrmContactQuarantine.get(id)
     }
 
     def update(Map params) {
+        def id = params.id
         def app = grailsApplication.metadata['app.name']
         def version = grailsApplication.metadata['app.version']
         def tenant = TenantUtils.tenant
         def currentUser = crmSecurityService.currentUser
-        def id = params.id
+        def rval
 
         params.tenant = tenant
         params.application = app
         params.username = currentUser?.username
 
-        def http = new HTTPBuilder("${SERVICE_URL}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-        def rval
-        try {
-            def httpParams = http.getClient().getParams()
-            httpParams.setParameter("http.connection.timeout", 5000)
-            httpParams.setParameter("http.socket.timeout", 20000)
-            http.request(Method.POST, ContentType.APPLICATION_JSON) {
-                headers.'User-Agent' = "$app/$version"
-                headers.Accept = ContentType.APPLICATION_JSON.toString()
-                body = params
-                response.success = { resp, data ->
-                    rval = data
+        if (getRemoteUri()) {
+            def http
+            if(id) {
+                http = new HTTPBuilder("${getRemoteUri()}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+            } else {
+                http = new HTTPBuilder("${getRemoteUri()}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+            }
+            try {
+                def httpParams = http.getClient().getParams()
+                httpParams.setParameter("http.connection.timeout", 5000)
+                httpParams.setParameter("http.socket.timeout", 20000)
+                http.request(Method.POST, ContentType.APPLICATION_JSON) {
+                    headers.'User-Agent' = "$app/$version"
+                    headers.Accept = ContentType.APPLICATION_JSON.toString()
+                    body = params
+                    response.success = { resp, data ->
+                        rval = data
+                    }
+                }
+            } finally {
+                http.shutdown()
+            }
+        } else {
+            def contact = id ? CrmContactQuarantine.get(id) : new CrmContactQuarantine(tenantId: tenant)
+            if (contact) {
+                grailsWebDataBinder.bind(contact, params as SimpleMapDataBindingSource, null, CrmContactQuarantine.BIND_WHITELIST_QUARANTINE, null, null)
+                rval = contact.save()
+                if (!rval) {
+                    log.error("Cannot quarantine contact information $params ${contact.errors.allErrors}")
                 }
             }
-        } finally {
-            http.shutdown()
         }
         rval
     }
 
     def delete(String id) {
-        def app = grailsApplication.metadata['app.name']
-        def version = grailsApplication.metadata['app.version']
-        def tenant = TenantUtils.tenant
-        def currentUser = crmSecurityService.currentUser
-
-        def http = new HTTPBuilder("${SERVICE_URL}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
         def rval
-        try {
-            def httpParams = http.getClient().getParams()
-            httpParams.setParameter("http.connection.timeout", 5000)
-            httpParams.setParameter("http.socket.timeout", 20000)
-            http.request(Method.DELETE) {
-                headers.'User-Agent' = "$app/$version"
-                headers.Accept = ContentType.APPLICATION_JSON.toString()
-                response.success = { resp, data ->
-                    rval = data
+        if (getRemoteUri()) {
+            def app = grailsApplication.metadata['app.name']
+            def version = grailsApplication.metadata['app.version']
+            def tenant = TenantUtils.tenant
+            def currentUser = crmSecurityService.currentUser
+            def http = new HTTPBuilder("${getRemoteUri()}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
+            try {
+                def httpParams = http.getClient().getParams()
+                httpParams.setParameter("http.connection.timeout", 5000)
+                httpParams.setParameter("http.socket.timeout", 20000)
+                http.request(Method.DELETE) {
+                    headers.'User-Agent' = "$app/$version"
+                    headers.Accept = ContentType.APPLICATION_JSON.toString()
+                    response.success = { resp, data ->
+                        rval = data
+                    }
                 }
+            } finally {
+                http.shutdown()
             }
-        } finally {
-            http.shutdown()
+        } else {
+            def contact = CrmContactQuarantine.get(id)
+            if (contact) {
+                rval = contact.dao
+                contact.delete()
+            }
         }
         rval
     }

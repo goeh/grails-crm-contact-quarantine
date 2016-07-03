@@ -17,9 +17,11 @@
 package grails.plugins.crm.contact
 
 import grails.converters.JSON
+import grails.plugins.crm.core.DateUtils
 import grails.plugins.crm.core.TenantUtils
 import grails.plugins.crm.task.CrmTaskAttender
 import grails.plugins.crm.task.CrmTaskAttenderStatus
+import grails.transaction.Transactional
 
 /**
  * Created by goran on 2016-06-23.
@@ -29,10 +31,8 @@ class CrmContactQuarantineController {
     def crmContactQuarantineService
     def crmSecurityService
     def crmContactService
-    def crmBookingService
     def crmTaskService
     def crmTrainingService
-    def selectionService
 
     def index() {
         def result = crmContactQuarantineService.list()
@@ -43,7 +43,18 @@ class CrmContactQuarantineController {
     def show(String id) {
         def currentUser = crmSecurityService.currentUser
         def contact = crmContactQuarantineService.get(id)
-        [user: currentUser, contact: contact]
+        [user: currentUser, contact: contact, target: identifyTarget(contact)]
+    }
+
+    private Object identifyTarget(contact) {
+        def target = contact.target
+        if (target) {
+            def crmTask = crmTaskService.findByNumber(target)
+            if (crmTask != null) {
+                return crmTask
+            }
+        }
+        return target
     }
 
     def update() {
@@ -97,26 +108,42 @@ class CrmContactQuarantineController {
         }
     }
 
-    def createPerson(String id) {
+    def createPerson(String id, Long company) {
+        def related = company ? crmContactService.getContact(company) : null
         if (request.post) {
+            if (related != null) {
+                def role = crmContactService.getRelationType(params.role)
+                params.related = [related, role]
+            }
             def m = crmContactService.createPerson(params, true)
             render m as JSON
         } else {
             def contact = crmContactQuarantineService.get(id)
-            render template: 'createPerson', model: [bean: contact]
+            def roles = crmContactService.listRelationType(null)
+            render template: 'createPerson', model: [bean: contact, company: related, roles: roles]
         }
     }
 
-    def createBooking(String id) {
+    @Transactional
+    def createBooking(String id, Long task, Long booking, Long person) {
+        def related = person ? crmContactService.getContact(person) : null
         if (request.post) {
-            def m = crmBookingService.createBooking(params, true)
+            def crmTask = crmTaskService.getTask(task)
+            def status = crmTaskService.getAttenderStatus(params.status)
+            def crmTaskBooking = booking ? crmTaskService.getTaskBooking(booking) : null
+            def bookingDate = params.bookingDate ? DateUtils.parseDate(params.bookingDate) : new Date()
+            if (!crmTaskBooking) {
+                crmTaskBooking = crmTaskService.createBooking([task: crmTask, bookingDate: bookingDate], true)
+            }
+            def m = crmTaskService.addAttender(crmTaskBooking, related, status, params.comments)
+            m.bookingDate = bookingDate
             render m as JSON
         } else {
             def contact = crmContactQuarantineService.get(id)
-            def crmTaskAttender = new CrmTaskAttender()
-            def statusList = crmTaskService.listAttenderStatus()
+            def crmTaskAttender = new CrmTaskAttender(contact: related, bookingDate: contact.timestamp)
             def events = crmTrainingService.listTrainingEvents([fromDate: new Date() - 7], [max: 10, sort: 'startTime', order: 'asc'])
             def bookingList = events.bookings.flatten()
+            def statusList = crmTaskService.listAttenderStatus()
             render template: 'createBooking',
                     model: [bean        : contact, crmTaskAttender: crmTaskAttender,
                             statusList  : statusList, bookingList: bookingList,
@@ -124,12 +151,13 @@ class CrmContactQuarantineController {
         }
     }
 
+    @Transactional
     def createTask(String id) {
         if (request.post) {
             def m = crmTaskService.createTask(params, true)
             render m as JSON
         } else {
-            if(! params.name) {
+            if (!params.name) {
                 params.name = 'Ny aktivitet'
             }
             def contact = crmContactQuarantineService.get(id)

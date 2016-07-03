@@ -1,31 +1,30 @@
 <g:form action="createBooking">
 
     <input type="hidden" name="id" value="${bean.id}"/>
+    <input type="hidden" name="person" value="${crmTaskAttender.contactId}"/>
 
     <div class="modal-header">
         <a class="close" data-dismiss="modal">×</a>
 
-        <h3>Boka - ${bean.fullName}</h3>
+        <h3>Boka - ${crmTaskAttender}</h3>
     </div>
 
     <div class="modal-body" style="overflow: auto;">
 
         <div class="control-group">
+            <label class="control-label"><g:message code="crmTaskBooking.task.label" /></label>
+
+            <div class="controls">
+                <g:select name="task" from="${trainingList}" optionKey="id" style="width: 90%;"/>
+            </div>
+        </div>
+
+        <div class="control-group">
              <label class="control-label"><g:message code="crmTaskAttender.status.label" /></label>
 
              <div class="controls">
-                 <g:select from="${statusList}" name="status.id" optionKey="id" value="${crmTaskAttender.status?.id}"
+                 <g:select from="${statusList}" name="status" optionKey="param" value="${crmTaskAttender.status?.param}"
                            style="width: 90%;"/>
-             </div>
-         </div>
-
-         <div class="control-group">
-             <label class="control-label"><g:message code="crmTaskAttender.booking.label" /></label>
-
-             <div class="controls">
-                 <g:select name="booking.id" from="${bookingList}" optionKey="id" optionValue="title"
-                       value="${crmTaskAttender.bookingId}"  style="width: 90%;"
-                       noSelection="['0': message(code: 'crmTaskAttender.new.booking.label')]"/>
              </div>
          </div>
 
@@ -45,7 +44,7 @@
             <label class="control-label">Meddelande</label>
 
             <div class="controls">
-                <g:textArea name="description" value="${bean.comments}" rows="3" style="width: 90%;"/>
+                <g:textArea name="comments" value="${bean.comments}" rows="3" style="width: 90%;"/>
             </div>
         </div>
 
