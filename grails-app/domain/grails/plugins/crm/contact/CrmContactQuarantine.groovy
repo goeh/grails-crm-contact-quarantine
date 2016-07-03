@@ -35,6 +35,7 @@ class CrmContactQuarantine extends CrmAddress implements CrmMutableContactInform
     String email
     String number
     String comments
+    String target
 
     static constraints = {
         firstName(maxSize: 40, nullable: true)
@@ -46,16 +47,17 @@ class CrmContactQuarantine extends CrmAddress implements CrmMutableContactInform
         email(maxSize: 80, nullable: true, email: true)
         number(maxSize: 40, nullable: true)
         comments(maxSize: 2000, nullable: true)
+        target(maxSize: 80, nullable: true)
     }
 
-    static transients = ['name', 'fullName', 'fullAddress', 'addressInformation', 'dao'] + CrmAddress.transients
+    static transients = ['name', 'fullName', 'fullAddress', 'addressInformation', 'timestamp', 'dao'] + CrmAddress.transients
 
     static taggable = true
     static attachmentable = true
     static dynamicProperties = true
 
     static final List BIND_WHITELIST_QUARANTINE = (['firstName', 'lastName', 'companyName', 'companyId',
-                                                       'title', 'telephone', 'email', 'number', 'comments'] + CrmAddress.BIND_WHITELIST).asImmutable()
+                                                       'title', 'telephone', 'email', 'number', 'comments', 'target'] + CrmAddress.BIND_WHITELIST).asImmutable()
 
     @Override
     @CompileStatic
@@ -124,8 +126,12 @@ class CrmContactQuarantine extends CrmAddress implements CrmMutableContactInform
         }
     }
 
+    transient long getTimestamp() {
+        this.dateCreated.time
+    }
+
     transient Map<String, Object> getDao() {
-        def result = ['id', 'firstName', 'lastName', 'companyName', 'companyId', 'title', 'telephone', 'email', 'number', 'comments'].inject(super.getDao()) { map, prop ->
+        def result = ['id', 'firstName', 'lastName', 'companyName', 'companyId', 'title', 'telephone', 'email', 'number', 'comments', 'target'].inject(super.getDao()) { map, prop ->
             def v = this[prop]
             if (v != null) {
                 map[prop] = v

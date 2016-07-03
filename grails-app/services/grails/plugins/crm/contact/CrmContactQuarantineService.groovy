@@ -18,10 +18,6 @@ package grails.plugins.crm.contact
 
 import grails.events.Listener
 import grails.plugins.crm.core.TenantUtils
-import groovy.json.JsonSlurper
-import groovyx.net.http.HTTPBuilder
-import groovyx.net.http.Method
-import org.apache.http.entity.ContentType
 import org.grails.databinding.SimpleMapDataBindingSource
 
 /**
@@ -48,15 +44,7 @@ class CrmContactQuarantineService {
         quarantine(data)
     }
 
-    private String getRemoteUri() {
-        grailsApplication.config.crm.contact.quarantine.url
-    }
-
-    CrmContactQuarantine quarantine(Map data) {
-        if (getRemoteUri()) {
-            println data
-            return update(data)
-        }
+    def quarantine(Map data) {
         def tenant = data.tenant ?: TenantUtils.tenant
         def contact = new CrmContactQuarantine(tenantId: tenant)
         grailsWebDataBinder.bind(contact, data as SimpleMapDataBindingSource, null, CrmContactQuarantine.BIND_WHITELIST_QUARANTINE, null, null)
@@ -66,35 +54,14 @@ class CrmContactQuarantineService {
         contact
     }
 
-    private Object fetch(String url) {
-        String data = new URL(url)
-                .getText(connectTimeout: 5000,
-                readTimeout: 10000,
-                useCaches: true,
-                allowUserInteraction: false,
-                requestProperties: ['Connection': 'close', 'User-Agent': USER_AGENT])
-        return data ? new JsonSlurper().parseText(data) : null
-    }
-
     Collection list() {
         def tenant = TenantUtils.tenant
-        if (getRemoteUri()) {
-            def app = grailsApplication.metadata['app.name']
-            def currentUser = crmSecurityService.currentUser
-            return fetch("${getRemoteUri()}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-        }
         CrmContactQuarantine.createCriteria().list() {
             eq('tenantId', tenant)
         }
     }
 
     def get(String id) {
-        if (getRemoteUri()) {
-            def app = grailsApplication.metadata['app.name']
-            def tenant = TenantUtils.tenant
-            def currentUser = crmSecurityService.currentUser
-            return fetch("${getRemoteUri()}/${id}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-        }
         CrmContactQuarantine.get(id)
     }
 
@@ -110,36 +77,12 @@ class CrmContactQuarantineService {
         params.application = app
         params.username = currentUser?.username
 
-        if (getRemoteUri()) {
-            def http
-            if(id) {
-                http = new HTTPBuilder("${getRemoteUri()}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-            } else {
-                http = new HTTPBuilder("${getRemoteUri()}?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-            }
-            try {
-                def httpParams = http.getClient().getParams()
-                httpParams.setParameter("http.connection.timeout", 5000)
-                httpParams.setParameter("http.socket.timeout", 20000)
-                http.request(Method.POST, ContentType.APPLICATION_JSON) {
-                    headers.'User-Agent' = "$app/$version"
-                    headers.Accept = ContentType.APPLICATION_JSON.toString()
-                    body = params
-                    response.success = { resp, data ->
-                        rval = data
-                    }
-                }
-            } finally {
-                http.shutdown()
-            }
-        } else {
-            def contact = id ? CrmContactQuarantine.get(id) : new CrmContactQuarantine(tenantId: tenant)
-            if (contact) {
-                grailsWebDataBinder.bind(contact, params as SimpleMapDataBindingSource, null, CrmContactQuarantine.BIND_WHITELIST_QUARANTINE, null, null)
-                rval = contact.save()
-                if (!rval) {
-                    log.error("Cannot quarantine contact information $params ${contact.errors.allErrors}")
-                }
+        def contact = id ? CrmContactQuarantine.get(id) : new CrmContactQuarantine(tenantId: tenant)
+        if (contact) {
+            grailsWebDataBinder.bind(contact, params as SimpleMapDataBindingSource, null, CrmContactQuarantine.BIND_WHITELIST_QUARANTINE, null, null)
+            rval = contact.save()
+            if (!rval) {
+                log.error("Cannot quarantine contact information $params ${contact.errors.allErrors}")
             }
         }
         rval
@@ -147,32 +90,10 @@ class CrmContactQuarantineService {
 
     def delete(String id) {
         def rval
-        if (getRemoteUri()) {
-            def app = grailsApplication.metadata['app.name']
-            def version = grailsApplication.metadata['app.version']
-            def tenant = TenantUtils.tenant
-            def currentUser = crmSecurityService.currentUser
-            def http = new HTTPBuilder("${getRemoteUri()}/$id?application=${app}&username=${currentUser.username}&tenant=${tenant}")
-            try {
-                def httpParams = http.getClient().getParams()
-                httpParams.setParameter("http.connection.timeout", 5000)
-                httpParams.setParameter("http.socket.timeout", 20000)
-                http.request(Method.DELETE) {
-                    headers.'User-Agent' = "$app/$version"
-                    headers.Accept = ContentType.APPLICATION_JSON.toString()
-                    response.success = { resp, data ->
-                        rval = data
-                    }
-                }
-            } finally {
-                http.shutdown()
-            }
-        } else {
-            def contact = CrmContactQuarantine.get(id)
-            if (contact) {
-                rval = contact.dao
-                contact.delete()
-            }
+        def contact = CrmContactQuarantine.get(id)
+        if (contact) {
+            rval = contact.dao
+            contact.delete()
         }
         rval
     }

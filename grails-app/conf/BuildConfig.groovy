@@ -24,8 +24,6 @@ grails.project.dependency.resolution = {
         // See https://jira.grails.org/browse/GPHIB-30
         test("javax.validation:validation-api:1.1.0.Final") { export = false }
         test("org.hibernate:hibernate-validator:5.0.3.Final") { export = false }
-        // https://mvnrepository.com/artifact/org.codehaus.groovy.modules.http-builder/http-builder
-        compile "org.codehaus.groovy.modules.http-builder:http-builder:0.7.1"
     }
 
     plugins {

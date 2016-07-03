@@ -88,7 +88,7 @@ class CrmContactQuarantineServiceSpec extends grails.test.spock.IntegrationSpec 
 
     def "test remote service"() {
         when:
-        def result = crmContactQuarantineService.list(1, "test")
+        def result = crmContactQuarantineService.list()
 
         then:
         result instanceof Collection

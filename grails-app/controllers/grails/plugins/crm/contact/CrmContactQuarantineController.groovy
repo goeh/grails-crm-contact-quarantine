@@ -20,7 +20,6 @@ import grails.converters.JSON
 import grails.plugins.crm.core.DateUtils
 import grails.plugins.crm.core.TenantUtils
 import grails.plugins.crm.task.CrmTaskAttender
-import grails.plugins.crm.task.CrmTaskAttenderStatus
 import grails.transaction.Transactional
 
 /**
